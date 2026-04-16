@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="tr">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>VThread Benchmark</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0e0f11;
+            --surface: #16181c;
+            --border: #2a2d35;
+            --text: #e8eaf0;
+            --muted: #6b7280;
+            --accent-blue: #4f8ef7;
+            --accent-green: #34c97e;
+            --accent-amber: #f5a623;
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem 1rem 4rem;
+        }
+
+        header {
+            width: 100%;
+            max-width: 620px;
+            margin-bottom: 2rem;
+        }
+
+        .logo-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .logo-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        h1 {
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+        .subtitle {
+            font-size: 0.78rem;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin-left: 18px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 620px;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+        }
+
+        .params {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .param {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .param label {
+            font-size: 0.82rem;
+            color: var(--muted);
+            min-width: 150px;
+            font-family: var(--mono);
+        }
+
+        .param input[type=range] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .param input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .param input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+
+        .param .val {
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            color: var(--accent-blue);
+            min-width: 52px;
+            text-align: right;
+        }
+
+        .run-btn {
+            width: 100%;
+            max-width: 620px;
+            padding: 0.85rem;
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-family: var(--mono);
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-bottom: 1rem;
+        }
+
+        .run-btn:hover { opacity: 0.88; }
+        .run-btn:active { transform: scale(0.99); }
+        .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 1.25rem;
+        }
+
+        .result-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+        }
+
+        .result-block .rb-label {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .result-block .rb-val {
+            font-family: var(--mono);
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .rb-platform .rb-val { color: var(--accent-blue); }
+        .rb-virtual .rb-val  { color: var(--accent-green); }
+
+        .result-block .rb-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .bar-section { margin-bottom: 0.5rem; }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .bar-row .br-label {
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--muted);
+            min-width: 80px;
+        }
+
+        .bar-track {
+            flex: 1;
+            background: var(--bg);
+            border-radius: 3px;
+            height: 22px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            font-weight: 700;
+            white-space: nowrap;
+            transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .bf-platform { background: #1a2d4a; color: var(--accent-blue); }
+        .bf-virtual  { background: #0f2e1f; color: var(--accent-green); }
+
+        .winner-tag {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #0f2e1f;
+            color: var(--accent-green);
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .analysis {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .analysis .key { color: var(--text); }
+        .analysis .green { color: var(--accent-green); }
+        .analysis .blue { color: var(--accent-blue); }
+        .analysis .amber { color: var(--accent-amber); }
+
+        .result-card { display: none; }
+
+        .spinner {
+            display: none;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .th-results {
+            width: 100%;
+            max-width: 620px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-line">
+        <div class="logo-dot"></div>
+        <h1>vthread-bench</h1>
+    </div>
+    <p class="subtitle">platform threads vs virtual threads · JDK 21</p>
+</header>
+
+<form th:action="@{/benchmark}" method="post" class="card" id="benchForm" onsubmit="onSubmit()">
+    <p class="card-title">Parametreler</p>
+    <div class="params">
+        <div class="param">
+            <label>task sayısı</label>
+            <input type="range" name="taskCount" id="taskCount" min="50" max="1000" step="50"
+                   th:value="${param.taskCount != null ? param.taskCount[0] : 300}"
+                   oninput="document.getElementById('tcv').textContent=this.value"/>
+            <span class="val" id="tcv"
+                  th:text="${param.taskCount != null ? param.taskCount[0] : 300}">300</span>
+        </div>
+        <div class="param">
+            <label>I/O gecikme (ms)</label>
+            <input type="range" name="ioDelayMs" id="ioDelay" min="10" max="500" step="10"
+                   th:value="${param.ioDelayMs != null ? param.ioDelayMs[0] : 100}"
+                   oninput="document.getElementById('iov').textContent=this.value+'ms'"/>
+            <span class="val" id="iov"
+                  th:text="${param.ioDelayMs != null ? param.ioDelayMs[0] + 'ms' : '100ms'}">100ms</span>
+        </div>
+        <div class="param">
+            <label>platform pool</label>
+            <input type="range" name="threadPoolSize" id="poolSize" min="5" max="200" step="5"
+                   th:value="${param.threadPoolSize != null ? param.threadPoolSize[0] : 50}"
+                   oninput="document.getElementById('psv').textContent=this.value"/>
+            <span class="val" id="psv"
+                  th:text="${param.threadPoolSize != null ? param.threadPoolSize[0] : 50}">50</span>
+        </div>
+    </div>
+</form>
+
+<button class="run-btn" id="runBtn" onclick="document.getElementById('benchForm').submit(); onSubmit();">
+    <span class="spinner" id="spinner"></span>
+    <span id="btnText">Çalıştır</span>
+</button>
+
+<div class="th-results" th:if="${platform != null and virtual != null}">
+    <div class="card result-card" style="display:block;">
+        <p class="card-title">
+            Sonuçlar
+            <span class="winner-tag" th:if="${virtual.totalElapsedMs < platform.totalElapsedMs}">virtual kazandı</span>
+            <span class="winner-tag" style="background:#1a2d4a; color:var(--accent-blue);"
+                  th:unless="${virtual.totalElapsedMs < platform.totalElapsedMs}">platform kazandı</span>
+        </p>
+
+        <div class="results-grid">
+            <div class="result-block rb-platform">
+                <div class="rb-label">platform threads</div>
+                <div class="rb-val" th:text="${platform.totalElapsedMs} + ' ms'">— ms</div>
+                <div class="rb-sub" th:text="${#numbers.formatDecimal(platform.throughputPerSecond,1,0)} + ' task/sn'">—</div>
+            </div>
+            <div class="result-block rb-virtual">
+                <div class="rb-label">virtual threads</div>
+                <div class="rb-val" th:text="${virtual.totalElapsedMs} + ' ms'">— ms</div>
+                <div class="rb-sub" th:text="${#numbers.formatDecimal(virtual.throughputPerSecond,1,0)} + ' task/sn'">—</div>
+            </div>
+        </div>
+
+        <div class="bar-section">
+            <div class="bar-row">
+                <span class="br-label">platform</span>
+                <div class="bar-track">
+                    <div class="bar-fill bf-platform"
+                         th:style="'width:' + ${platform.totalElapsedMs > virtual.totalElapsedMs ? 96 : #numbers.formatDecimal(platform.totalElapsedMs * 96.0 / (platform.totalElapsedMs > virtual.totalElapsedMs ? platform.totalElapsedMs : virtual.totalElapsedMs), 1, 0)} + '%'"
+                         th:text="${platform.totalElapsedMs} + 'ms'">
+                    </div>
+                </div>
+            </div>
+            <div class="bar-row">
+                <span class="br-label">virtual</span>
+                <div class="bar-track">
+                    <div class="bar-fill bf-virtual"
+                         th:style="'width:' + ${virtual.totalElapsedMs > platform.totalElapsedMs ? 96 : #numbers.formatDecimal(virtual.totalElapsedMs * 96.0 / (platform.totalElapsedMs > virtual.totalElapsedMs ? platform.totalElapsedMs : virtual.totalElapsedMs), 1, 0)} + '%'"
+                         th:text="${virtual.totalElapsedMs} + 'ms'">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="analysis" th:if="${speedup != null}">
+            <span class="green" th:text="'×' + speedup + ' hızlı'">×—</span>
+            <span th:if="${virtual.totalElapsedMs < platform.totalElapsedMs}"> — virtual thread kazandı.</span>
+            <span th:unless="${virtual.totalElapsedMs < platform.totalElapsedMs}"> — pool yeterince büyük, fark az.</span>
+            &nbsp;
+            <span class="key" th:text="${platform.taskCount}">—</span> task /
+            <span class="blue" th:text="${poolSize}">—</span> thread =
+            <span class="amber" th:text="${roundRobinRounds}">—</span> tur bekledi.
+            Virtual thread ise hepsini <span class="green">eş zamanlı</span> başlattı.
+        </div>
+    </div>
+</div>
+
+<script>
+function onSubmit() {
+    document.getElementById('spinner').style.display = 'inline-block';
+    document.getElementById('btnText').textContent = 'Çalışıyor...';
+    document.getElementById('runBtn').disabled = true;
+}
+</script>
+
+</body>
+</html>

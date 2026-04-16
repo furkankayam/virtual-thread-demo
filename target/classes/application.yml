@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: virtual-thread-demo
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200
+
+logging:
+  level:
+    com.demo: DEBUG
